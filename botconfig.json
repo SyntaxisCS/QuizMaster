@@ -1,0 +1,6 @@
+{
+	"token": "[REDACTED]",
+	"prefix": "*",
+	"host": "localhost",
+	"statuses": ["*help", "I am alive!"]
+}
