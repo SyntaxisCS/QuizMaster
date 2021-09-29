@@ -63,7 +63,22 @@ client.on("messageCreate", async (msg) => {
 
 		// Student
 			if (cmd === prefix + "addstudent") {
-				// Create student with @mention
+				if(!msg.member.permissions.has("MANAGE_MESSAGES")) {
+					msg.channel.send(`${author}, that is a teacher+ command!`);
+				} else {
+					if(!msg.mentions.users.first()) {
+						msg.channel.send(`${author}, you didn't specify a new student!`);
+					} else {
+						let studentRoleQuery = DB.prepare(`SELECT studentRole FROM 'GuildConfig' WHERE guildId = ${msg.guild.id}`);
+						let studentRoleDB = studentRoleQuery.get().studentRole;
+						let studentRole = msg.guild.roles.cache.find(role => role.name === studentRoleDB);
+						let newStudent = msg.guild.members.cache.get(msg.mentions.users.first().id);
+						// console.log(newStudent)
+						newStudent.roles.add(studentRole);
+						let sql = DB.prepare(`INSERT OR IGNORE INTO StudentTable (tag) VALUES ('${msg.mentions.users.first().username}#${msg.mentions.users.first().discriminator}')`);
+						sql.run();
+					}
+				}
 			}
 
 			if (cmd === prefix + "deletestudent") {
