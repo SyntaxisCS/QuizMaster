@@ -41,7 +41,6 @@ If you experience any issues please open an issue or contact me on discord @ Syn
 ## License
 
 This project is licensed under the GPL-3.0 License
-Please do not delete the botinfo command and if you modify it please leave my name under the creator tab
 
 ## Acknowledgments
 
