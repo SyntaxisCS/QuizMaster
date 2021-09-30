@@ -51,14 +51,91 @@ client.on("messageCreate", async (msg) => {
 			});
 		}
 
+	if (cmd === prefix + "question") {
+		msg.delete();
+		if(!args) {
+			msg.channel.send(`${author}, this is a multi-part command, please refer to the help command.`);
+		} else {
+			if (args === "create") {
+				if(!args2) {
+					msg.channel.send(`Question cannot be empty`);
+				} else {
+					if (args2.includes(",")) {
+						let split = args2.split(",");
+						let question = split[0];
+						let answer = split[1];
+						let sql = DB.prepare(`INSERT OR IGNORE INTO QuestionTable (question, answer) VALUES ('${question}','${answer}')`);
+						sql.run();
+						let questionQuery = DB.prepare(`SELECT questionId FROM 'QuestionTable' WHERE question = '${question}'`);
+						let questionId = questionQuery.get().questionId;
+						msg.channel.send(`Created the question "${question}" with the answer of "${answer}" and assigned an id of "${questionId}"`);
+					} else {
+						msg.channel.send(`Please seperate the question and answer with a ,`);
+					}
+				}
+			}
+			if (args === "delete") {
+				if(!args2) {
+					msg.channel.send(`Please specify a message id to delete`);
+				} else {
+					if (isNaN(args2)) {
+						msg.channel.send(`That is not a valid question id!`);
+					} else {
+						let sql = DB.prepare(`DELETE FROM QuestionTable WHERE questionId = ${args2}`);
+						sql.run();
+						msg.channel.send(`Question ${args2} Deleted`);
+					}
+				}
+			}
+			if (args === "view") {
+				if(!args2) {
+					msg.channel.send(`Please give a valid question id`);
+				} else {
+					if (isNaN(args2)) {
+						msg.channel.send(`That is not a valid question id!`);
+					} else {
+						let sql = DB.prepare(`SELECT * FROM 'QuestionTable' WHERE questionId = ${args2}`);
+						let question = sql.get().question;
+						let answer = sql.get().answer;
+						msg.channel.send(`Question ${sql.get().questionId}: ${question}, ${answer}`);
+					}
+				}
+			}
+		}
+	}
+
 	// Role Handling
 		// Teacher
 			if (cmd === prefix + "addteacher") {
-				// Create teacher with @mention
+				if(!msg.member.permissions.has("ADMINISTRATOR")) {
+					msg.channel.send(`${author}, this is a admin only command!`);
+				} else {
+					if(!msg.mentions.users.first()) {
+						msg.channel.send(`${author}, you didn't specify a new teacher!`);
+					} else {
+						let teacherRoleQuery = DB.prepare(`SELECT teacherRole FROM 'GuildConfig' WHERE guildId = ${msg.guild.id}`);
+						let teacherRoleDB = teacherRoleQuery.get().teacherRole;
+						let teacherRole = msg.guild.roles.cache.find(role => role.name === teacherRoleDB);
+						let newTeacher = msg.guild.members.cache.get(msg.mentions.users.first().id);
+						newTeacher.roles.add(teacherRole).catch(err => console.log(err));
+					}
+				}
 			}
 
 			if (cmd === prefix + "deleteteacher") {
-				// Delete by id
+				if(!msg.member.permissions.has("ADMINISTRATOR")) {
+					msg.channel.send(`${author}, this is an admin only command!`);
+				} else {
+					if(!msg.mentions.users.first()) {
+						msg.channel.send(`${author}, you didn't specify a teacher to delete`);
+					} else {
+						let teacherRoleQuery = DB.prepare(`SELECT teacherRole FROM 'GuildConfig' WHERE guildId = ${msg.guild.id}`);
+						let teacherRoleDB = teacherRoleQuery.get().teacherRole;
+						let teacherRole = msg.guild.roles.cache.find(role => role.name === teacherRoleDB);
+						let teacher = msg.guild.members.cache.get(msg.mentions.users.first().id);
+						teacher.roles.remove(teacherRole).catch(err => console.log(err));
+					}
+				}
 			}
 
 		// Student
@@ -74,7 +151,7 @@ client.on("messageCreate", async (msg) => {
 						let studentRole = msg.guild.roles.cache.find(role => role.name === studentRoleDB);
 						let newStudent = msg.guild.members.cache.get(msg.mentions.users.first().id);
 						// console.log(newStudent)
-						newStudent.roles.add(studentRole);
+						newStudent.roles.add(studentRole).catch(err => console.log(err));
 						let sql = DB.prepare(`INSERT OR IGNORE INTO StudentTable (tag) VALUES ('${msg.mentions.users.first().username}#${msg.mentions.users.first().discriminator}')`);
 						sql.run();
 					}
@@ -82,7 +159,25 @@ client.on("messageCreate", async (msg) => {
 			}
 
 			if (cmd === prefix + "deletestudent") {
-				// Delete by id
+				if(!msg.member.permissions.has("MANAGE_MESSAGES")) {
+					msg.channel.send(`${author}, this is a teacher+ command!`);
+				} else {
+					if(!msg.mentions.users.first()) {
+						msg.channel.send(`${author}, you didn't specify a student to delete!`);
+					} else {
+						if (args2 === "confirm") {
+							let studentRoleQuery = DB.prepare(`SELECT studentRole FROM 'GuildConfig' WHERE guildId = ${msg.guild.id}`);
+							let studentRoleDB = studentRoleQuery.get().studentRole;
+							let studentRole = msg.guild.roles.cache.find(role => role.name === studentRoleDB);
+							let student = msg.guild.members.cache.get(msg.mentions.users.first().id);
+							student.roles.remove(studentRole).catch(err => console.log(err));
+							let sql = DB.prepare(`DELETE FROM StudentTable WHERE tag = '${msg.mentions.users.first().username}#${msg.mentions.users.first().discriminator}'`);
+							sql.run();
+						} else {
+							msg.channel.send(`${author}, this is a powerful command! Confirm what you are doing by typing the comamnd like this ${prefix}deletestudent <@mention> confirm`);
+						}
+					}
+				}
 			}
 
 
@@ -162,6 +257,12 @@ client.on("messageCreate", async (msg) => {
 
 	DB.close();
   }
+});
+
+client.on("guildDelete", guild => { // When bot is kicked or leaves a server
+	// Delete server entry from database
+	const deleteQuery = DB.prepare(`DELETE FROM GuildConfig WHERE guildId = ${guild.id}`);
+	deleteQuery.run();
 });
 
 client.login(botconfig.token);
