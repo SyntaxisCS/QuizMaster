@@ -104,6 +104,84 @@ client.on("messageCreate", async (msg) => {
 		}
 	}
 
+	// Quiz Creation
+	if (cmd === prefix + "quiz") {
+		msg.delete();
+		if(!msg.member.permissions.has("MANAGE_MESSAGES")) {
+			msg.channel.send(`${author}, this is a teacher+ command!`);
+		} else {
+			if(!args || !args2) {
+				msg.channel.send(`${author}, your forgot something! ${prefix}quiz <name> <questionIds>`);
+			} else {
+				let numOfQuestions;
+				if (args2.includes(",")) {
+					if (args2.includes(" ")) {
+						let qSplit = args2.split(",");
+						let qTrim = [];
+						qSplit.forEach(id => {qTrim.push(id.trim())});
+						
+						args2 = qTrim.join(",");
+						numOfQuestions = qTrim.length;
+
+						let sql = DB.prepare(`INSERT OR IGNORE INTO QuizTable (name, numOfQuestions, questions, active) VALUES ('${args}',${numOfQuestions},'${args2}',True)`);
+						sql.run();
+
+						let idQuery = DB.prepare(`SELECT quizId FROM 'QuizTable' WHERE name = '${args}'`);
+						let id = idQuery.get().quizId;
+
+						msg.channel.send(`Created "${args}" with the questions "${args2}" with an id of "${id}"`);
+					} else {
+						let sql = DB.prepare(`INSERT OR IGNORE INTO QuizTable (name, numOfQuestions, questions, active) VALUES ('${args}',${numOfQuestions},'${args2}',True)`);
+						sql.run();
+
+						let idQuery = DB.prepare(`SELECT quizId FROM 'QuizTable' WHERE name = '${args}'`);
+						let id = idQuery.get().quizId;
+
+						msg.channel.send(`Created "${args}" with the questions "${args2}" with an id of "${id}"`);
+					}
+				} else {
+					msg.channel.send(`${author} it appears that the formating for your questionIds is off. Please format it like this "1,3,14,81,211"`);
+				}
+			}
+		}
+	}
+
+	if (cmd === prefix + "deletequiz") {
+		msg.delete();
+		if(!msg.member.permissions.has("ADMINISTRATOR")) {
+			msg.channel.send(`${author}, this is an admin only command!`);
+		} else {
+			if(!args) {
+				msg.channel.send("Please specify a quiz to delete by id");
+			} else {
+				if (isNaN(args)) {
+					msg.channel.send("That is not a valid quizId");
+				} else {
+					let sql = DB.prepare(`DELETE FROM QuizTable WHERE quizId = ${args}`);
+					sql.run();
+					msg.channel.send(`Deleted a quiz with an id of ${args}`);
+				}
+			}
+		}
+	}
+
+	if (cmd === prefix + "viewquiz") {
+		msg.delete();
+		if(!args) {
+			msg.channel.send("Please specify an quiz id to search");
+		} else {
+			if (isNaN(args)) {
+				msg.channel.send("That is not a valid quiz id");
+			} else {
+				let sql = DB.prepare(`SELECT * FROM 'QuizTable' WHERE quizId = ${args}`);
+				let id = sql.get().quizId
+				let name = sql.get().name;
+				let numOfQuestions = sql.get().numOfQuestions;
+				msg.channel.send(`${name}(${id}) is a quiz with ${numOfQuestions} questions`);
+			}
+		}
+	}
+
 	// Role Handling
 		// Teacher
 			if (cmd === prefix + "addteacher") {
