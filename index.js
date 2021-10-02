@@ -123,7 +123,7 @@ client.on("messageCreate", async (msg) => {
 						args2 = qTrim.join(",");
 						numOfQuestions = qTrim.length;
 
-						let sql = DB.prepare(`INSERT OR IGNORE INTO QuizTable (name, numOfQuestions, questions, active) VALUES ('${args}',${numOfQuestions},'${args2}',True)`);
+						let sql = DB.prepare(`INSERT OR IGNORE INTO QuizTable (name, numOfQuestions, questions, active) VALUES ('${args}',${numOfQuestions},'${args2}',False)`);
 						sql.run();
 
 						let idQuery = DB.prepare(`SELECT quizId FROM 'QuizTable' WHERE name = '${args}'`);
@@ -131,7 +131,7 @@ client.on("messageCreate", async (msg) => {
 
 						msg.channel.send(`Created "${args}" with the questions "${args2}" with an id of "${id}"`);
 					} else {
-						let sql = DB.prepare(`INSERT OR IGNORE INTO QuizTable (name, numOfQuestions, questions, active) VALUES ('${args}',${numOfQuestions},'${args2}',True)`);
+						let sql = DB.prepare(`INSERT OR IGNORE INTO QuizTable (name, numOfQuestions, questions, active) VALUES ('${args}',${numOfQuestions},'${args2}',False)`);
 						sql.run();
 
 						let idQuery = DB.prepare(`SELECT quizId FROM 'QuizTable' WHERE name = '${args}'`);
@@ -181,6 +181,66 @@ client.on("messageCreate", async (msg) => {
 			}
 		}
 	}
+
+	if (cmd === prefix + "assign") {
+		msg.delete();
+		if(!msg.member.permissions.has("MANAGE_MESSAGES")) {
+			msg.channel.send(`${author}, this is a teacher+ command!`);
+		} else {
+			if(!args || !args2) {
+				msg.channel.send(`${author} you forgot something! ${prefix}assign <@mention> <quizId>`);
+			} else {
+				if(!msg.mentions.users.first()) {
+					msg.channel.send(`${author} please specify a student`);
+				} else {
+					let sql = DB.prepare(`SELECT assignedQuizzes FROM 'StudentTable' WHERE tag = '${msg.mentions.users.first().username}#${msg.mentions.users.first().discriminator}'`);
+					let oldQuiz = sql.get().assignedQuizzes;
+					let final = stringer(oldQuiz, args2);
+
+					if (final === "Invalid") {
+						msg.channel.send("That is an invalid quiz id");
+					} else {
+						let update = DB.prepare(`UPDATE StudentTable SET assignedQuizzes = '${final}' WHERE tag = '${msg.mentions.users.first().username}#${msg.mentions.users.first().discriminator}'`);
+						update.run();
+						msg.channel.send("Assigned quizzes updated!");
+					}
+				}
+			}
+		}
+	}
+
+	if (cmd === prefix + "unassign") {
+		msg.delete();
+		if(!msg.member.permissions.has("MANAGE_MESSAGES")) {
+			msg.channel.send(`${author}, this is a teacher+ command!`);
+		} else {
+			if(!args || !args2) {
+				msg.channel.send(`${author} you forgot something! ${prefix}unassign <@mention> <quizId>`);
+			} else {
+				if(!msg.mentions.users.first()) {
+					msg.channel.send(`${author} please specify a student`);
+				} else {
+					let sql = DB.prepare(`SELECT assignedQuizzes FROM 'StudentTable' WHERE tag = '${msg.mentions.users.first().username}#${msg.mentions.users.first().discriminator}'`);
+					let oldQuiz = sql.get().assignedQuizzes;
+					let newQuiz;
+					let array = [];
+
+					oldQuiz.split(",").forEach(id => {
+						if (id === args2) {
+							return
+						} else {
+							array.push(id);
+						}
+					});
+					newQuiz = array.join(",");
+					let update = DB.prepare(`UPDATE StudentTable SET assignedQuizzes = '${newQuiz}' WHERE tag = '${msg.mentions.users.first().username}#${msg.mentions.users.first().discriminator}'`);
+					update.run();
+				}
+			}
+		}
+	}
+
+	// Quiz Taking
 
 	// Role Handling
 		// Teacher
@@ -342,5 +402,15 @@ client.on("guildDelete", guild => { // When bot is kicked or leaves a server
 	const deleteQuery = DB.prepare(`DELETE FROM GuildConfig WHERE guildId = ${guild.id}`);
 	deleteQuery.run();
 });
+
+function stringer(oldString, newString) {
+    if(isNaN(newString) || newString.includes(",") || oldString.includes(newString)) {
+        return "Invalid"
+    } else {
+        return finalQuiz = `${oldString},${newString}`;
+    }
+}
+
+// destringer function
 
 client.login(botconfig.token);
