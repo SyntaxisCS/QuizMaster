@@ -242,6 +242,31 @@ client.on("messageCreate", async (msg) => {
 
 	// Quiz Taking
 
+	if (cmd === prefix + "quizactive") {
+		msg.delete();
+		if(!msg.member.permissions.has("MANAGE_MESSAGES")) {
+			msg.channel.send(`${author}, that is a teacher+ command!`);
+		} else {
+			if(!args) {
+				msg.channel.send("That is not a valid id");
+			} else {
+				let activeQuery = DB.prepare(`SELECT welcomeEnable FROM 'GuildConfig' WHERE guildId = ${msg.guild.id}`);
+  				let active = activeQuery.get().welcomeEnable;
+  			
+  				if (active === 0) {
+  					let sql = DB.prepare(`UPDATE QuizTable SET active = 1 WHERE quizId = ${args};`);
+						sql.run();
+						msg.channel.send(`Quiz ${args} has been set to active`);
+  					}
+  				if (active === 1) {
+  					let sql = DB.prepare(`UPDATE QuizTable SET active = 0 WHERE quizId = ${args};`);
+						sql.run();
+						msg.channel.send(`Quiz ${args} has been set to inactive`);
+  				}
+			}
+		}
+	}
+
 	// Role Handling
 		// Teacher
 			if (cmd === prefix + "addteacher") {
